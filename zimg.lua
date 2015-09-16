@@ -15,12 +15,12 @@ local q = tonumber(ngx.var.arg_quality)
 
 if ok and code == 200 then
         if string.len(body) > 0 then
-                img = image:new(body)
+                local img = image:new(body)
                 if img ~= nil then
                         img:strip()
-                        cimg = img:compress(q)
-                        if cimg ~= nil then
-                                ngx.print(cimg)
+                        local s = img:compress(q)
+                        if s ~= nil then
+                                ngx.print(s)
                                 return
                         end
                 end
