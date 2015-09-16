@@ -11,7 +11,7 @@ local ok, code, headers, status, body = hc:request {
         method = "GET"
 }
 
-q = tonumber(ngx.var.arg_quality)
+local q = tonumber(ngx.var.arg_quality)
 
 if ok and code == 200 then
         if string.len(body) > 0 then
