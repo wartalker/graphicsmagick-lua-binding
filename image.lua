@@ -38,7 +38,7 @@ libgm.InitializeMagick();
 function _M.new(self, img)
 	local wand = ffi.gc(libgm.NewMagickWand(), function(w)
 		libgm.DestroyMagickWand(w)
-	end)
+		end)
 	local size = #img
 	local blob = ffi.new('char['..size..']', img)
 	local r = libgm.MagickReadImageBlob(wand, ffi.cast('const void *', blob), size)
@@ -49,6 +49,7 @@ function _M.new(self, img)
 	end
 end
 
+local tonumber = tonumber
 function _M.compress(self, quality)
 	local r = libgm.MagickSetCompressionQuality(self._wand, quality)
 	if r ~= 0 then

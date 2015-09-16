@@ -22,9 +22,12 @@ if ok and code == 200 then
                         if s ~= nil then
                                 ngx.print(s)
                                 return
+			else
+				ngx.log(ngx.ERR, "GraphicsMagick compress failed")
                         end
+		else
+			ngx.log(ngx.ERR, "GraphicsMagick load image failed")
                 end
-                ngx.log(ngx.ERR, "GraphicsMagick can't read image data")
                 ngx.print(body)
         end
 else
