@@ -1,4 +1,4 @@
--- graphic magic lua binding --
+-- GraphicMagic lua binding --
 
 local ffi = require "ffi"
 
@@ -36,14 +36,14 @@ ffi.cdef
 
 
 local libgm = ffi.load('GraphicsMagickWand')
-libgm.InitializeMagick();
+libgm.InitializeMagick()
 
 function _M.new(self, img)
 	local wand = ffi.gc(libgm.NewMagickWand(), function(w)
 		libgm.DestroyMagickWand(w)
 	end)
 	local r = libgm.MagickReadImageBlob(wand, img, #img)
-	return (r ~= 0 and setmetatable({_wand = wand}, mt)) or nil
+	return (r ~= 0) and setmetatable({_wand = wand}, mt) or nil
 end
 
 function _M.compress(self, quality)

@@ -3,20 +3,18 @@ local http = require("resty.http")
 
 local path = string.gsub(string.gsub(ngx.var.request_uri, "%.webp$", ""), "-app$", "")
 local imgurl = "http://image.xcar.com.cn" .. path
--- local imgurl = "http://10.15.201.151" .. path
 local hc = http:new()
 local ok, code, headers, status, body = hc:request {
         url = imgurl,
         proxy = "http://10.15.201.151:80",
-        method = "GET"
+	timeout = 120*1000
 }
-
-local q = tonumber(ngx.var.arg_quality)
 
 if ok and code == 200 then
         if #body > 0 then
+		local q = tonumber(ngx.var.arg_quality)
                 local img = image:new(body)
-                if (img ~= nil) and (img:compress(q) ~= 0) then
+                if img ~= nil and img:compress(q) ~= 0 then
                         img:strip()
                         local s = img:string()
                         if s ~= nil then
@@ -28,6 +26,6 @@ if ok and code == 200 then
 		ngx.print(body)
 	end
 else
-        ngx.log(ngx.ERR, "Image not found: " .. code)
+        ngx.log(ngx.ERR, "Download image error: " .. code)
         ngx.exit(404)
 end
