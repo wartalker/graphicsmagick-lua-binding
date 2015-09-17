@@ -18,10 +18,13 @@ ffi.cdef
 
   // Magick Wand:
   MagickWand* NewMagickWand();
-  MagickWand* DestroyMagickWand(MagickWand*);
+  MagickWand* DestroyMagickWand( MagickWand * );
+
+  // Free resouse
+  unsigned int MagickRelinquishMemory( void *resource );
 
   // Read/Write:
-  MagickBooleanType MagickReadImageBlob(MagickWand*, const void*, const size_t);
+  MagickBooleanType MagickReadImageBlob( MagickWand*, const void*, const size_t );
   unsigned char *MagickWriteImageBlob( MagickWand *wand, size_t *length );
 
   // Quality:
@@ -38,32 +41,25 @@ libgm.InitializeMagick();
 function _M.new(self, img)
 	local wand = ffi.gc(libgm.NewMagickWand(), function(w)
 		libgm.DestroyMagickWand(w)
-		end)
-	local size = #img
-	local blob = ffi.new('char['..size..']', img)
-	local r = libgm.MagickReadImageBlob(wand, ffi.cast('const void *', blob), size)
-	if r ~= 0 then
-		return setmetatable({_wand = wand}, mt)
-	else
-		return nil
-	end
+	end)
+	local r = libgm.MagickReadImageBlob(wand, img, #img)
+	return (r ~= 0 and setmetatable({_wand = wand}, mt)) or nil
 end
 
-local tonumber = tonumber
 function _M.compress(self, quality)
-	local r = libgm.MagickSetCompressionQuality(self._wand, quality)
-	if r ~= 0 then
-		local psize = ffi.new('size_t[1]')
-		local blob = ffi.gc(libgm.MagickWriteImageBlob(self._wand, psize), ffi.C.free)
-		local size = tonumber(psize[0])
-		return ffi.string(blob, size)
-	else
-		return nil
-	end
+	return libgm.MagickSetCompressionQuality(self._wand, quality)
+end
+
+function _M.string(self)
+	local len = ffi.new('size_t[1]', 0)
+	local blob = libgm.MagickWriteImageBlob(self._wand, len)
+	local s = ffi.string(blob, len[0])
+	libgm.MagickRelinquishMemory(blob)
+	return s
 end
 
 function _M.strip(self)
-	libgm.MagickStripImage(self._wand)
+	return libgm.MagickStripImage(self._wand)
 end
 
 return _M

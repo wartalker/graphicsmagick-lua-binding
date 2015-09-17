@@ -14,23 +14,20 @@ local ok, code, headers, status, body = hc:request {
 local q = tonumber(ngx.var.arg_quality)
 
 if ok and code == 200 then
-        if string.len(body) > 0 then
+        if #body > 0 then
                 local img = image:new(body)
-                if img ~= nil then
+                if (img ~= nil) and (img:compress(q) ~= 0) then
                         img:strip()
-                        local s = img:compress(q)
+                        local s = img:string()
                         if s ~= nil then
                                 ngx.print(s)
-                                return
-			else
-				ngx.log(ngx.ERR, "GraphicsMagick compress failed")
-                        end
-		else
-			ngx.log(ngx.ERR, "GraphicsMagick load image failed")
-                end
-                ngx.print(body)
-        end
+				return
+			end
+		end
+		ngx.log(ngx.ERR, "GraphicsMagick read or compress image failed")
+		ngx.print(body)
+	end
 else
-        ngx.log(ngx.ERR, "Image not found")
+        ngx.log(ngx.ERR, "Image not found: " .. code)
         ngx.exit(404)
 end
