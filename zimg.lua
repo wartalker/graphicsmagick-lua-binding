@@ -1,31 +1,41 @@
 local image = require("resty.image")
 local http = require("resty.http")
 
+local function zimg(m, q)
+	local img = image:new(m)
+
+	if img == nil then
+		return nil
+	end
+
+	if img:compress(q) == 0 then
+		return nil
+	end
+	
+	img:strip()
+	return img:string()
+end
+
+
 local path = string.gsub(string.gsub(ngx.var.request_uri, "%.webp$", ""), "-app$", "")
-local imgurl = "http://image.xcar.com.cn" .. path
+local url = "http://image.xcar.com.cn" .. path
+
 local hc = http:new()
 local ok, code, headers, status, body = hc:request {
-        url = imgurl,
-        proxy = "http://10.15.201.151:80",
-	timeout = 120*1000
+        url = url,
+        proxy = "http://10.15.201.151:80"
 }
 
 if ok and code == 200 then
         if #body > 0 then
 		local q = tonumber(ngx.var.arg_quality)
-                local img = image:new(body)
-                if img ~= nil and img:compress(q) ~= 0 then
-                        img:strip()
-                        local s = img:string()
-                        if s ~= nil then
-                                ngx.print(s)
-				return
-			end
+		local s = zimg(body, q)
+		if s ~= nil then
+			ngx.print(s)
+		else
+			ngx.print(body)
 		end
-		ngx.log(ngx.ERR, "GraphicsMagick read or compress image failed")
-		ngx.print(body)
 	end
 else
-        ngx.log(ngx.ERR, "Download image error: " .. code)
         ngx.exit(404)
 end
