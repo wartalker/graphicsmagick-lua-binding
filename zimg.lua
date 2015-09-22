@@ -4,14 +4,10 @@ local http = require("resty.http")
 local function zimg(m, q)
 	local img = image:new(m)
 
-	if img == nil then
+	if img == nil or img:compress(q) == 0 then
 		return nil
 	end
 
-	if img:compress(q) == 0 then
-		return nil
-	end
-	
 	img:strip()
 	return img:string()
 end
