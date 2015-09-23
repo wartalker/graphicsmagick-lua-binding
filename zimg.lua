@@ -12,9 +12,9 @@ local function zimg(m, q)
 	return img:string()
 end
 
-
+local host = ""
 local path = string.gsub(string.gsub(ngx.var.request_uri, "%.webp$", ""), "-app$", "")
-local url = "http://image.xcar.com.cn" .. path
+local url = host .. path
 
 local hc = http:new()
 local ok, code, headers, status, body = hc:request {
