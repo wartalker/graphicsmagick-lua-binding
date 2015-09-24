@@ -16,18 +16,19 @@ ffi.cdef
 
   void InitializeMagick();
 
-  // Magick Wand:
+  // Magick Wand
   MagickWand* NewMagickWand();
   MagickWand* DestroyMagickWand( MagickWand * );
 
   // Free resouse
   unsigned int MagickRelinquishMemory( void *resource );
 
-  // Read/Write:
+  // Read/Write
   MagickBooleanType MagickReadImageBlob( MagickWand*, const void*, const size_t );
   unsigned char *MagickWriteImageBlob( MagickWand *wand, size_t *length );
+  unsigned int MagickWriteImage( MagickWand *wand, const char *filename );
 
-  // Quality:
+  // Quality
   unsigned int MagickSetCompressionQuality( MagickWand *wand, const unsigned long quality );
 
   // Remove profile
@@ -50,6 +51,10 @@ function _M.compress(self, quality)
 	return libgm.MagickSetCompressionQuality(self._wand, quality)
 end
 
+function _M.strip(self)
+	return libgm.MagickStripImage(self._wand)
+end
+
 function _M.string(self)
 	local len = ffi.new('size_t[1]', 0)
 	local blob = libgm.MagickWriteImageBlob(self._wand, len)
@@ -58,8 +63,8 @@ function _M.string(self)
 	return s
 end
 
-function _M.strip(self)
-	return libgm.MagickStripImage(self._wand)
+function _M.save(path)
+	return libgm.MagickWriteImage(self._wand, path)
 end
 
 return _M
