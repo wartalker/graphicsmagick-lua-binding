@@ -2,46 +2,52 @@ local image = require("resty.image")
 local http = require("socket.http")
 local ltn12 = require("ltn12")
 local os = require("os")
+local io = require("io")
+local string = require("string")
 
 local function exists(path)
 	local f, e = io.open(path, "rb")
-	if f ~= nil then
-		f:close()
-		return true
-	else
+
+	if f == nil then
 		return false
 	end
+
+	f:close()
+	return true
 end
 
 local function check(path)
 	local s, e = string.find(path, "[^/]*$")
-	if s > 1 then
-		local dpath = string.sub(path, 0, s -1)
+
+	if s <= 1 then
+		return false
+	end
+
+	local dpath = string.sub(path, 0, s-1)
+
+	if exists(dpath) then
+		return true
+	end
+
+	local r = os.execute("/bin/mkdir -p " .. "'" .. dpath .. "'")
+
+	if r == 0 then
+		return true
+	end
+
+	for i=1,3 do
 		if exists(dpath) then
 			return true
 		end
-		local r = os.execute("/bin/mkdir -p " .. "'" .. dpath .. "'")
-		if r ~= 0 then
-			for i=1,3 do
-				if exists(dpath) then
-					return true
-				end
-			end
-			return false
-		else
-			return true
-		end
-	elseif s == 1 then
-		return true
-	else
-		return false
 	end
+
+	return false
 end
 
 
-local function zimg(m, q, p)
-	local img = image:new(m)
-	
+local function zimg(data, q, path)
+	local img = image:new(data)
+
 	if img == nil or img:compress(q) == 0 then
 		return nil
 	end
@@ -50,16 +56,17 @@ local function zimg(m, q, p)
 
 	local s = img:string()
 
-	-- save must finally run, because img will destroy after it --
-	if p ~= nil and check(p) then
-		img:save(p)
+	-- save must run finally, because img will be destroyed after it --
+	if path ~= nil and check(path) then
+		img:save(path)
 	end
 
 	return s
 end
 
+local host = ""
 local path = string.gsub(string.gsub(ngx.var.request_uri, "%.webp$", ""), "-app$", "")
-local imgurl = "http://image.xcar.com.cn" .. path
+local imgurl = host .. path
 
 local t = {}
 local ok, code, headers = http.request {
