@@ -16,38 +16,22 @@ typedef int size_t;
 
 typedef enum
 {
-	UndefinedFilter,
-	PointFilter,
-	BoxFilter,
-	TriangleFilter,
-	HermiteFilter,
-	HanningFilter,
-	HammingFilter,
-	BlackmanFilter,
-	GaussianFilter,
-	QuadraticFilter,
-	CubicFilter,
-	CatromFilter,
-	MitchellFilter,
-	JincFilter,
-	SincFilter,
-	SincFastFilter,
-	KaiserFilter,
-	WelshFilter,
-	ParzenFilter,
-	BohmanFilter,
-	BartlettFilter,
-	LagrangeFilter,
-	LanczosFilter,
-	LanczosSharpFilter,
-	Lanczos2Filter,
-	Lanczos2SharpFilter,
-	RobidouxFilter,
-	RobidouxSharpFilter,
-	CosineFilter,
-	SplineFilter,
-	LanczosRadiusFilter,
-	SentinelFilter
+  UndefinedFilter,
+  PointFilter,
+  BoxFilter,
+  TriangleFilter,
+  HermiteFilter,
+  HanningFilter,
+  HammingFilter,
+  BlackmanFilter,
+  GaussianFilter,
+  QuadraticFilter,
+  CubicFilter,
+  CatromFilter,
+  MitchellFilter,
+  LanczosFilter,
+  BesselFilter,
+  SincFilter
 } FilterTypes;
 
 
@@ -104,8 +88,9 @@ end
 
 function _M.resize(self, w, h)
 	assert(w ~= nil)
+
 	if h == nil then
-		local iw, ih = self.width(), self.height()
+		local iw, ih = self:width(), self:height()
 		if iw > ih then
 			h = w*ih/iw
 		else
