@@ -13,7 +13,7 @@ local wh = {
         {'w',450},
         {'w',608},
         {'h',32},
-        {'m',600}
+        {'m',600},
 }
 
 local xy = {
@@ -35,7 +35,7 @@ local xy = {
         {500,375},
         {600,450},
         {635,480},
-        {700,525}
+        {700,525},
 }
 
 local function exists(path)
@@ -71,9 +71,11 @@ local w, h, l
 local path, suffix, suffix_
 local st
 local t = tonumber(ngx.var.type)
+
 if t == nil then
 	t = 0
 end
+
 if t == 1 then
 	_, _, path, suffix, w, h, suffix_ = string.find(ngx.var.uri,
 							'(.*)%.(%a+)%-(%d+)x(%d+)%.(%a+)')
@@ -92,8 +94,10 @@ else
 end
 
 local is_resize = false
+
 if st ~= nil then
 	local i
+	
 	for i=1, #wh do
 		if wh[i][1] == st and wh[i][2] == l then
 			is_resize = true
@@ -102,7 +106,8 @@ if st ~= nil then
 	end
 else
 	local i
-	for i = 1, #xy do
+
+	for i=1, #xy do
 		if xy[i][1] == w and xy[i][2] == h then
 			is_resize = true
 			break
@@ -115,11 +120,13 @@ if is_resize and suffix_ ~= 'webp' and suffix_ ~= suffix then
 end
 
 local src = ngx.var.srcPath .. path .. '.' .. suffix
+
 if not exists(src) then
 	ngx.exit(404)
 end
 
 local img = image:new(src, 'file')
+
 if img == nil then
 	ngx.exit(404)
 end
@@ -129,15 +136,18 @@ if img:compress(q) == 0 then
 end
 
 if is_resize then
-	if w and w > 0 and h and h > 0 then
+	if w ~= nil and w > 0 and h ~= nil and h > 0 then
 		img:resize(w, h)
-	elseif l and l > 0 then
+		ngx.log(ngx.ERR, "resize: " .. w .. "x" .. h)
+	elseif l ~= nil and l > 0 then
 		img:resize(l, 0)
+		ngx.log(ngx.ERR, "resize: " .. l .. "x")
 	end
 end
 
 local si = img:string()
 local dst = ngx.var.srcPath .. ngx.var.uri
+
 if check(dst) then
 	img:save(dst)
 end
