@@ -3,16 +3,18 @@
 local ffi = require "ffi"
 
 local _M = {}
-_M._VERSION = '0.2'
+_M._VERSION = '0.3'
 local mt = { __index = _M }
 
 ffi.cdef
 [[
-void free(void *);
 typedef void MagickWand;
+typedef void DrawingWand;
+typedef void PixelWand;
 typedef int MagickBooleanType;
 typedef int ExceptionType;
 typedef int size_t;
+
 
 typedef enum
 {
@@ -35,10 +37,26 @@ typedef enum
 } FilterTypes;
 
 
+typedef enum
+{
+  ForgetGravity,
+  NorthWestGravity,
+  NorthGravity,
+  NorthEastGravity,
+  WestGravity,
+  CenterGravity,
+  EastGravity,
+  SouthWestGravity,
+  SouthGravity,
+  SouthEastGravity,
+  StaticGravity
+} GravityType;
+
+
 // Init
 void InitializeMagick();
 
-// Magick Wand
+// *** Magick Wand ***
 MagickWand* NewMagickWand();
 MagickWand* DestroyMagickWand( MagickWand * );
 
@@ -49,6 +67,7 @@ unsigned int MagickRelinquishMemory( void *resource );
 MagickBooleanType MagickReadImageBlob( MagickWand*, const void*, const size_t );
 unsigned char *MagickWriteImageBlob( MagickWand *wand, size_t *length );
 unsigned int MagickWriteImage( MagickWand *wand, const char *filename );
+unsigned int MagickReadImage( MagickWand *wand, const char *filename );
 
 // Size
 unsigned long MagickGetImageWidth( MagickWand *wand );
@@ -64,65 +83,164 @@ unsigned int MagickSetCompressionQuality( MagickWand *wand, const unsigned long 
 
 // Remove profile
 unsigned int MagickStripImage( MagickWand *wand );
+
+// Annote Text
+unsigned int MagickAnnotateImage( MagickWand *wand, const DrawingWand *drawing_wand,
+                                  const double x, const double y, const double angle,
+                                  const char *text );
+
+// *** Drawing Wand ***
+DrawingWand *MagickNewDrawingWand();
+void MagickDestroyDrawingWand( DrawingWand *drawing_wand );
+
+// Set text encoding
+void MagickDrawSetTextEncoding( DrawingWand *drawing_wand, const char *encoding );
+
+// Font
+void MagickDrawSetFont( DrawingWand *drawing_wand, const char *font_name );
+void MagickDrawSetFontSize( DrawingWand *drawing_wand, const double pointsize );
+void MagickDrawSetFillColor( DrawingWand *drawing_wand, const PixelWand *fill_wand );
+void MagickDrawSetGravity( DrawingWand *drawing_wand, const GravityType gravity );
+
+// *** Pixel Wand ***
+PixelWand* NewPixelWand();
+unsigned int DestroyPixelWand( PixelWand *wand );
+
+// Set color
+unsigned int PixelSetColor( PixelWand *wand, const char *color );
 ]]
 
 
-local libgm = ffi.load('GraphicsMagickWand')
+local libgm = ffi.load('/usr/local/lib/libGraphicsMagickWand.so')
 libgm.InitializeMagick()
 
-function _M.new(self, img)
-	local wand = ffi.gc(libgm.NewMagickWand(), function(w)
+function _M.new(self, img, t)
+	local mwand = ffi.gc(libgm.NewMagickWand(), function(w)
 		libgm.DestroyMagickWand(w)
 	end)
-	local r = libgm.MagickReadImageBlob(wand, img, #img)
-	return (r ~= 0) and setmetatable({_wand = wand}, mt) or nil
+
+	local r = 0
+	if t == 'mem' then
+		r = libgm.MagickReadImageBlob(mwand, img, #img)
+	elseif t == 'file' then
+		r = libgm.MagickReadImage(mwand, img)
+	end
+
+	return (r ~= 0) and setmetatable({_mwand = mwand}, mt) or nil
 end
 
 function _M.width(self)
-	return libgm.MagickGetImageWidth(self._wand)
+	return libgm.MagickGetImageWidth(self._mwand)
 end
 
 function _M.height(self)
-	return libgm.MagickGetImageHeight(self._wand)
+	return libgm.MagickGetImageHeight(self._mwand)
+end
+
+local function _resize(self, w, h)
+	assert(w > 0 and h > 0)
+
+	local filter = libgm['LanczosFilter']
+	return libgm.MagickResizeImage(self._mwand, w, h, filter, 1.0)
 end
 
 function _M.resize(self, w, h)
-	assert(w ~= nil)
-
-	if h == nil then
-		local iw, ih = self:width(), self:height()
-		if iw > ih then
-			h = w*ih/iw
-		else
-			local t = w
-			h = t
-			w = t*iw/ih
-		end
+	if h == nil or h == 0 then
+		local iw = self:width()
+		local ih = self:height()
+		h = w * ih / iw
 	end
 
-	local filter = libgm['LanczosFilter']
-	return libgm.MagickResizeImage(self._wand, w, h, filter, 1.0)
+	return _resize(w, h)
 end
 
 function _M.compress(self, quality)
 	assert(0 <= quality and quality <= 100)
-	return libgm.MagickSetCompressionQuality(self._wand, quality)
+	return libgm.MagickSetCompressionQuality(self._mwand, quality)
 end
 
 function _M.strip(self)
-	return libgm.MagickStripImage(self._wand)
+	return libgm.MagickStripImage(self._mwand)
 end
 
 function _M.string(self)
 	local len = ffi.new('size_t[1]', 0)
-	local blob = libgm.MagickWriteImageBlob(self._wand, len)
+	local blob = libgm.MagickWriteImageBlob(self._mwand, len)
 	local s = ffi.string(blob, len[0])
 	libgm.MagickRelinquishMemory(blob)
 	return s
 end
 
 function _M.save(self, path)
-	return libgm.MagickWriteImage(self._wand, path)
+	return libgm.MagickWriteImage(self._mwand, path)
+end
+
+local function new_pixel_wand()
+	local pwand = ffi.gc(libgm.NewPixelWand(), function(w)
+			libgm.DestroyPixelWand(w)
+	end)
+	return pwand
+end
+
+local function new_draw_wand()
+	local dwand = ffi.gc(libgm.MagickNewDrawingWand(), function(w)
+		libgm.MagickDestroyDrawingWand(w)
+	end)
+	return dwand
+end
+
+local function set_font(dwand, path, size, color)
+	if libgm.MagickDrawSetFont(dwand, path) == 0 then
+		return 0
+	end
+
+	if libgm.MagickDrawSetFontSize(dwand, size) == 0 then
+		return 0
+	end
+
+	local pwand = new_pixel_wand()
+	if pwand == nil or libgm.PixelSetColor(pwand, color) == 0 then
+		return 0
+	end
+
+	return libgm.MagickDrawSetFillColor(dwand, pwand)
+end
+
+local function set_gravity(dwand, gravity)
+	local g = libgm[gravity .. 'Gravity']
+	if g == nil then
+		return 0
+	end
+   	return libgm.MagickDrawSetGravity(dwand, g)
+end
+
+function _M.annote(self, path, size, color, pos, text)
+	local i, _ = string.find(pos, ':')
+	local gravity = string.sub(pos, 0, i-1)
+	local j, _ = string.find(pos, 'x', i+1)
+	local x = tonumber(string.sub(pos, i+1, j-1))
+	local y = tonumber(string.sub(pos, j+1))
+
+	if x == nil or y == nil then
+		return 0
+	end
+
+	local dwand = new_draw_wand()
+	if dwand == nil then
+		return 0
+	end
+
+	libgm.MagickDrawSetTextEncoding(dwand, 'utf-8')
+
+	if set_font(dwand, path, size, color) == 0 then
+		return 0
+	end
+
+	if set_gravity(dwand, gravity) == 0 then
+		return 0
+	end
+
+	return libgm.MagickAnnotateImage(self._mwand, dwand, x, y, 0, text)
 end
 
 return _M
