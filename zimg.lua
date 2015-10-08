@@ -6,47 +6,34 @@ local io = require("io")
 local string = require("string")
 
 local function exists(path)
-	local f, e = io.open(path, "rb")
-
+	local f, _ = io.open(path, "rb")
 	if f == nil then
 		return false
 	end
-
 	f:close()
 	return true
 end
 
 local function check(path)
-	local s, e = string.find(path, "[^/]*$")
-
-	if s <= 1 then
-		return false
-	end
-
-	local dpath = string.sub(path, 0, s-1)
-
+	local dpath = string.match(path, ".*/")
 	if exists(dpath) then
 		return true
 	end
-
 	local r = os.execute("/bin/mkdir -p " .. "'" .. dpath .. "'")
-
 	if r == 0 then
 		return true
 	end
-
-	for i=1,3 do
+	for i = 1, 3 do
 		if exists(dpath) then
 			return true
 		end
 	end
-
+	ngx.log(ngx.ERR, "mkdir: " .. dpath)
 	return false
 end
 
-
 local function zimg(data, q, path)
-	local img = image:new(data)
+	local img = image:new(data, 'mem')
 
 	if img == nil or img:compress(q) == 0 then
 		return nil
@@ -64,12 +51,12 @@ local function zimg(data, q, path)
 	return s
 end
 
-local host = ""
+local host = "http://image.xcar.com.cn"
 local path = string.gsub(string.gsub(ngx.var.request_uri, "%.webp$", ""), "-app$", "")
 local imgurl = host .. path
 
 local t = {}
-local ok, code, headers = http.request {
+local ok, code, _ = http.request {
 	url = imgurl,
 	proxy = "http://10.15.201.151:80",
 	sink = ltn12.sink.table(t)
