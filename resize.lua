@@ -12,8 +12,8 @@ local wh = {
         {'w',420},
         {'w',450},
         {'w',608},
-        {'h',32},
-        {'m',600},
+--        {'h',32},
+--        {'m',600},
 }
 
 local xy = {
@@ -77,20 +77,17 @@ if t == nil then
 end
 
 if t == 1 then
-	_, _, path, suffix, w, h, suffix_ = string.find(ngx.var.uri,
-							'(.*)%.(%a+)%-(%d+)x(%d+)%.(%a+)')
+	_, _, path, suffix, w, h, suffix_ = string.find(ngx.var.uri, '(.*)%.(%a+)%-(%d+)x(%d+)%.(%a+)')
 	w, h = tonumber(w), tonumber(h)
 elseif t == 2 then
-	_, _, path, suffix, w, suffix_ = string.find(ngx.var.uri,
-						     '(.*)%.(%a+)%-(%d+)%.(%a+)')
+	_, _, path, suffix, w, suffix_ = string.find(ngx.var.uri, '(.*)%.(%a+)%-(%d+)%.(%a+)')
 	w = tonumber(w)
 	h = w
 elseif t == 3 then
-	_, _, path, suffix, st, l, suffix_ = string.find(ngx.var.uri,
-							 '(.*)%.(%a+)%-([whm])(%d+)%.(%a+)')
+	_, _, path, suffix, st, l, suffix_ = string.find(ngx.var.uri, '(.*)%.(%a+)%-([whm])(%d+)%.(%a+)')
 	l = tonumber(l)
 else
-	_, _, path, suffix = string.find(ngx.var.uri, '(.*)%.(%a+)%.webp')
+	_, _, path, suffix = string.find(ngx.var.uri, '(.*)%.(%a+)%.webp$')
 end
 
 local is_resize = false
@@ -138,15 +135,13 @@ end
 if is_resize then
 	if w ~= nil and w > 0 and h ~= nil and h > 0 then
 		img:resize(w, h)
-		ngx.log(ngx.ERR, "resize: " .. w .. "x" .. h)
 	elseif l ~= nil and l > 0 then
 		img:resize(l, 0)
-		ngx.log(ngx.ERR, "resize: " .. l .. "x")
 	end
 end
 
 local si = img:string()
-local dst = ngx.var.srcPath .. ngx.var.uri
+local dst = ngx.var.destPath .. ngx.var.uri
 
 if check(dst) then
 	img:save(dst)

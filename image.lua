@@ -111,7 +111,7 @@ unsigned int PixelSetColor( PixelWand *wand, const char *color );
 ]]
 
 
-local libgm = ffi.load('/usr/local/lib/libGraphicsMagickWand.so')
+local libgm = ffi.load('libGraphicsMagickWand')
 libgm.InitializeMagick()
 
 function _M.new(self, img, t)
@@ -137,25 +137,17 @@ function _M.height(self)
 	return libgm.MagickGetImageHeight(self._mwand)
 end
 
-local function _resize(self, w, h)
-	assert(w > 0 and h > 0)
-
-	local filter = libgm['LanczosFilter']
-	return libgm.MagickResizeImage(self._mwand, w, h, filter, 1.0)
-end
-
 function _M.resize(self, w, h)
 	if h == nil or h == 0 then
 		local iw = self:width()
 		local ih = self:height()
 		h = w * ih / iw
 	end
-
-	return _resize(w, h)
+	local filter = libgm['LanczosFilter']
+	return libgm.MagickResizeImage(self._mwand, w, h, filter, 1.0)
 end
 
 function _M.compress(self, quality)
-	assert(0 <= quality and quality <= 100)
 	return libgm.MagickSetCompressionQuality(self._mwand, quality)
 end
 
