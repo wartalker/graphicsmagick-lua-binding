@@ -51,7 +51,7 @@ local function zimg(data, q, path)
 	return s
 end
 
-local host = "http://image.xcar.com.cn"
+local host = ""
 local path = string.gsub(string.gsub(ngx.var.request_uri, "%.webp$", ""), "-app$", "")
 local imgurl = host .. path
 
