@@ -3,7 +3,7 @@
 local ffi = require "ffi"
 
 local _M = {}
-_M._VERSION = '0.3'
+_M._VERSION = '0.4'
 local mt = { __index = _M }
 
 ffi.cdef
@@ -158,9 +158,13 @@ end
 function _M.string(self)
 	local len = ffi.new('size_t[1]', 0)
 	local blob = libgm.MagickWriteImageBlob(self._mwand, len)
-	local s = ffi.string(blob, len[0])
-	libgm.MagickRelinquishMemory(blob)
-	return s
+	if ffi.cast('void *', blob) > nil then
+		local s = ffi.string(blob, len[0])
+		libgm.MagickRelinquishMemory(blob)
+		return s
+	else
+		return nil
+	end
 end
 
 function _M.save(self, path)
