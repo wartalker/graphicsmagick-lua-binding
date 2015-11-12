@@ -63,6 +63,9 @@ MagickWand* DestroyMagickWand( MagickWand * );
 // Free resouse
 unsigned int MagickRelinquishMemory( void *resource );
 
+//
+char * MagickGetImageFormat( MagickWand *wand );
+
 // Read/Write
 MagickBooleanType MagickReadImageBlob( MagickWand*, const void*, const size_t );
 unsigned char *MagickWriteImageBlob( MagickWand *wand, size_t *length );
@@ -143,6 +146,13 @@ function _M.resize(self, w, h)
 		local ih = self:height()
 		h = w * ih / iw
 	end
+
+	if w == nil or w == 0 then
+		local iw = self:width()
+		local ih = self:height()
+		w = h * iw / ih
+	end
+
 	local filter = libgm['LanczosFilter']
 	return libgm.MagickResizeImage(self._mwand, w, h, filter, 1.0)
 end
@@ -152,7 +162,12 @@ function _M.compress(self, quality)
 end
 
 function _M.strip(self)
-	return libgm.MagickStripImage(self._mwand)
+	local t = ffi.string(libgm.MagickGetImageFormat(self._mwand))
+	if t ~= 'JPEG' then
+		return libgm.MagickStripImage(self._mwand)
+	else
+		return 1
+	end
 end
 
 function _M.string(self)
