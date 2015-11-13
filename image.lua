@@ -127,14 +127,14 @@ unsigned int PixelSetColor( PixelWand *wand, const char *color );
 local libgm = ffi.load('libGraphicsMagickWand')
 libgm.InitializeMagick()
 
-local function new_pixel_wand()
+local function pixel_wand()
 	local pwand = ffi.gc(libgm.NewPixelWand(), function(w)
 			libgm.DestroyPixelWand(w)
 	end)
 	return pwand
 end
 
-local function new_draw_wand()
+local function draw_wand()
 	local dwand = ffi.gc(libgm.MagickNewDrawingWand(), function(w)
 		libgm.MagickDestroyDrawingWand(w)
 	end)
@@ -158,7 +158,7 @@ local function set_font(dwand, path, size, color)
 		return 0
 	end
 
-	local pwand = new_pixel_wand()
+	local pwand = pixel_wand()
 	if pwand == nil or libgm.PixelSetColor(pwand, color) == 0 then
 		return 0
 	end
@@ -166,7 +166,7 @@ local function set_font(dwand, path, size, color)
 	return libgm.MagickDrawSetFillColor(dwand, pwand)
 end
 
-local function ori(s)
+local function orientation(s)
 	local o = string.match(s, 'Orientation:%s*(%d)')
 	if o ~= nil then
 		local n = tonumber(o)
@@ -214,7 +214,7 @@ function _M.profile(self, name)
 	end
 end
 
-function _M.info(self)
+function _M.desc(self)
 	local blob = libgm.MagickDescribeImage(self._mwand)
 	if ffi.cast('void *', blob) > nil then
 		local s = ffi.string(blob)
@@ -226,7 +226,7 @@ function _M.info(self)
 end
 
 function _M.rotate(self, degree)
-	local pwand = new_pixel_wand()
+	local pwand = pixel_wand()
 	if pwand == nil then
 		return 0
 	end
@@ -241,12 +241,12 @@ function _M.flop(self)
 	return libgm.MagickFlopImage(self._mwand)
 end
 
-function _M.jpeg_rotate(self)
-	local info = self:info()
-	if info == nil then
+function _M.jpeg_rm_orientation(self)
+	local desc = self:desc()
+	if desc == nil then
 		return
 	end
-	local o = ori(info)
+	local o = orientation(desc)
 	if     o == 1 then
 	elseif o == 2 then
 		self:flop()
@@ -304,7 +304,6 @@ function _M.save(self, path)
 	return libgm.MagickWriteImage(self._mwand, path)
 end
 
-
 function _M.annote(self, path, size, color, pos, text)
 	local i, _ = string.find(pos, ':')
 	local gravity = string.sub(pos, 0, i-1)
@@ -316,7 +315,7 @@ function _M.annote(self, path, size, color, pos, text)
 		return 0
 	end
 
-	local dwand = new_draw_wand()
+	local dwand = draw_wand()
 	if dwand == nil then
 		return 0
 	end
