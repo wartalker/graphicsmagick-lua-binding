@@ -1,6 +1,8 @@
 -- GraphicMagic lua binding --
 
 local ffi = require "ffi"
+local string = require "string"
+local tonumber = tonumber
 
 local _M = {}
 _M._VERSION = '0.5'
@@ -147,6 +149,23 @@ local function set_gravity(dwand, gravity)
    	return libgm.MagickDrawSetGravity(dwand, g)
 end
 
+local function set_font(dwand, path, size, color)
+	if libgm.MagickDrawSetFont(dwand, path) == 0 then
+		return 0
+	end
+
+	if libgm.MagickDrawSetFontSize(dwand, size) == 0 then
+		return 0
+	end
+
+	local pwand = new_pixel_wand()
+	if pwand == nil or libgm.PixelSetColor(pwand, color) == 0 then
+		return 0
+	end
+
+	return libgm.MagickDrawSetFillColor(dwand, pwand)
+end
+
 local function ori(s)
 	local o = string.match(s, 'Orientation:%s*(%d)')
 	if o ~= nil then
@@ -157,6 +176,8 @@ local function ori(s)
 	end
 	return 0
 end
+
+------------------module functions----------------------
 
 function _M.new(self, img, t)
 	local mwand = ffi.gc(libgm.NewMagickWand(), function(w)
@@ -222,6 +243,9 @@ end
 
 function _M.jpeg_rotate(self)
 	local info = self:info()
+	if info == nil then
+		return
+	end
 	local o = ori(info)
 	if     o == 1 then
 	elseif o == 2 then
@@ -261,14 +285,7 @@ function _M.compress(self, quality)
 end
 
 function _M.strip(self)
-	local t = ffi.string(libgm.MagickGetImageFormat(self._mwand))
 	return libgm.MagickStripImage(self._mwand)
-
---	if t ~= 'JPEG' then
---		return libgm.MagickStripImage(self._mwand)
---	else
---		return 1
---	end
 end
 
 function _M.string(self)
@@ -287,22 +304,6 @@ function _M.save(self, path)
 	return libgm.MagickWriteImage(self._mwand, path)
 end
 
-local function set_font(dwand, path, size, color)
-	if libgm.MagickDrawSetFont(dwand, path) == 0 then
-		return 0
-	end
-
-	if libgm.MagickDrawSetFontSize(dwand, size) == 0 then
-		return 0
-	end
-
-	local pwand = new_pixel_wand()
-	if pwand == nil or libgm.PixelSetColor(pwand, color) == 0 then
-		return 0
-	end
-
-	return libgm.MagickDrawSetFillColor(dwand, pwand)
-end
 
 function _M.annote(self, path, size, color, pos, text)
 	local i, _ = string.find(pos, ':')
