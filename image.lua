@@ -5,7 +5,7 @@ local string = require "string"
 local tonumber = tonumber
 
 local _M = {}
-_M._VERSION = '0.5'
+_M._VERSION = '0.6'
 local mt = { __index = _M }
 
 ffi.cdef
@@ -121,17 +121,33 @@ unsigned int DestroyPixelWand( PixelWand *wand );
 
 // Set color
 unsigned int PixelSetColor( PixelWand *wand, const char *color );
+
+// Set image format
+unsigned int MagickSetImageFormat( MagickWand *wand, const char *format );
 ]]
 
 
 local libgm = ffi.load('libGraphicsMagickWand')
 libgm.InitializeMagick()
 
+local function magick_wand()
+        return libgm.NewMagickWand()
+end
+
+local function destroy_magick_wand(wand)
+        libgm.DestroyMagickWand(wand)
+end
+
 local function pixel_wand()
-	local pwand = ffi.gc(libgm.NewPixelWand(), function(w)
-			libgm.DestroyPixelWand(w)
-	end)
+--	local pwand = ffi.gc(libgm.NewPixelWand(), function(w)
+--			libgm.DestroyPixelWand(w)
+--	end)
+        local pwand = libgm.NewMagickWand()
 	return pwand
+end
+
+local function destroy_pixel_wand(pwand)
+        libgm.DestroyPixelWand(pwand)
 end
 
 local function draw_wand()
@@ -139,6 +155,10 @@ local function draw_wand()
 		libgm.MagickDestroyDrawingWand(w)
 	end)
 	return dwand
+end
+
+local function destroy_draw_wand(dwand)
+        libgm.DestroyMagickWand(dwand)
 end
 
 local function set_gravity(dwand, gravity)
@@ -159,10 +179,16 @@ local function set_font(dwand, path, size, color)
 	end
 
 	local pwand = pixel_wand()
-	if pwand == nil or libgm.PixelSetColor(pwand, color) == 0 then
+        if pwand == nil then
+                return 0
+        end
+
+	if libgm.PixelSetColor(pwand, color) == 0 then
+                destroy_pixel_wand(pwand)
 		return 0
 	end
 
+        destroy_pixel_wand(pwand)
 	return libgm.MagickDrawSetFillColor(dwand, pwand)
 end
 
@@ -180,9 +206,14 @@ end
 ------------------module functions----------------------
 
 function _M.new(self, img, t)
-	local mwand = ffi.gc(libgm.NewMagickWand(), function(w)
-		libgm.DestroyMagickWand(w)
-	end)
+--	local mwand = ffi.gc(libgm.NewMagickWand(), function(w)
+--		libgm.DestroyMagickWand(w)
+--	end)
+
+        local mwand = libgm.NewMagickWand()
+        if mwand == nil then
+                return nil
+        end
 
 	local r = 0
 	if t == 'mem' then
@@ -191,7 +222,14 @@ function _M.new(self, img, t)
 		r = libgm.MagickReadImage(mwand, img)
 	end
 
-	return (r ~= 0) and setmetatable({_mwand = mwand}, mt) or nil
+        if r == 0 then
+                destroy_magick_wand(mwand)
+                return nil
+        end
+
+        return setmetatable({_mwand = mwand}, mt)
+
+--	return (r ~= 0) and setmetatable({_mwand = mwand}, mt) or nil
 end
 
 function _M.width(self)
@@ -230,7 +268,10 @@ function _M.rotate(self, degree)
 	if pwand == nil then
 		return 0
 	end
-	return libgm.MagickRotateImage(self._mwand, pwand, degree)
+--	return libgm.MagickRotateImage(self._mwand, pwand, degree)
+	local r = libgm.MagickRotateImage(self._mwand, pwand, degree)
+        destroy_pixel_wand(pwand)
+        return r
 end
 
 function _M.flip(self)
@@ -288,6 +329,10 @@ function _M.strip(self)
 	return libgm.MagickStripImage(self._mwand)
 end
 
+function _M.format(self, t)
+        return libgm.MagickSetImageFormat(self._mwand, t)
+end
+
 function _M.string(self)
 	local len = ffi.new('size_t[1]', 0)
 	local blob = libgm.MagickWriteImageBlob(self._mwand, len)
@@ -330,7 +375,16 @@ function _M.annote(self, path, size, color, pos, text)
 		return 0
 	end
 
-	return libgm.MagickAnnotateImage(self._mwand, dwand, x, y, 0, text)
+	local r = libgm.MagickAnnotateImage(self._mwand, dwand, x, y, 0, text)
+        destroy_draw_wand(dwand)
+        return r
+end
+
+function _M.destroy(self)
+        if self._mwand ~= nil then
+                destroy_magick_wand(self._mwand)
+                self._mwand = nil
+        end
 end
 
 return _M
